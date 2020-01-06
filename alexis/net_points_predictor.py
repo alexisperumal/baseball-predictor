@@ -180,7 +180,7 @@ def calc_predictions(games_df, v_ra_np_df, h_ra_np_df, start_date, end_date, \
     end_processing = datetime.datetime.now()
     duration = end_processing - start_processing
     print(f'  {end_processing}: Predictions calculated in {duration} hr/min/sec.')
-    print("")
+    # print("")
     return results_df
 
 
