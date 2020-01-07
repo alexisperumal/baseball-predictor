@@ -43,6 +43,12 @@ def read_source_data():
     df = df[['Date', 'Visiting Team', 'Visiting League', 'Home Team', 'Home League',
                        'Visiting Score','Home Score']]
     
+#     print(df.head(30))
+    df = df.replace('FLO','MIA') # After the 2011 season, the Florida Marlins
+                                 # rebranded themselves the Miami Marlins. This
+                                 # search and replace makes the two the same.
+#     print(df.head(30))
+    
     # Drop all rows with missing information
     # print(df.head())
     df = df.dropna(how='any')
@@ -109,6 +115,7 @@ def build_netpoints_dfs(games_df, start_date, end_date, lookback_n, gdays):
     # Create home and visitor tables to hold net points, by team and gameday.
     # Start with the visiting teams.
     v_teams = games_df['Visiting Team'].unique()
+    # print(v_teams)
     v_teams.sort()
     v_np_df = pd.DataFrame(columns=v_teams, index=gdays) # Visiting net points by day
     v_ng_df = pd.DataFrame(columns=v_teams, index=gdays) # Visiting # games by day
