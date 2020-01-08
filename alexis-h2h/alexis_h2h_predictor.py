@@ -92,7 +92,7 @@ def gamedays_offset(gamedays, base_date, n):
         raise ValueError(f"{base_date}, not in the the gamedays series.")
     base_date_index = gamedays[gamedays==base_date].index[0]
     if ((n + base_date_index) < 0) or n + base_date_index >= len(gamedays):
-        raise ValueError(f"Attempting to calculate a game date outside the dataset.")
+        raise ValueError(f"Attempting to calculate a game date outside the dataset.{n},{base_date_index}, {len(gamedays)}.")
         return(0)  # Out of range
     else:
         new_index = base_date_index + n
@@ -108,8 +108,11 @@ def build_h2h_results_df(games_df):
 
 
 # Return true if predict home wins based on prior head-to-head matchups.
-def lookup_h2h(df, v_team, h_team, game_day, lookback_n, prioritize_wins=True):
-    h2h_df = df.loc[((df['Date'] < game_day) & (df['Visiting Team']==v_team) & \
+def lookup_h2h(df, v_team, h_team, game_day, lookback_n, gdays, prioritize_wins=False):
+    start_lookback_date = gamedays_offset(gdays, game_day, -lookback_n)
+    h2h_df = df.loc[((df['Date'] < game_day) & \
+                     (df['Date'] >= start_lookback_date) & \
+                     (df['Visiting Team']==v_team) & \
                      (df['Home Team']==h_team))]
     n_games = len(h2h_df)
     n_home_wins = h2h_df['Home Winner'].values.sum()
@@ -140,7 +143,7 @@ def calc_predictions(games_df, start_date, end_date, lookback_n, gdays):
         h_team = results_df.loc[game, 'Home Team']
         g_day = results_df.loc[game, 'Date']
         results_df.at[game, 'Predict Home Wins?'] = lookup_h2h(games_df, v_team, h_team, g_day, \
-                                                               lookback_n)
+                                                               lookback_n, gdays)
 
     results_df['Prediction Correct?'] = results_df['Predict Home Wins?'] == results_df['Home Winner']
 

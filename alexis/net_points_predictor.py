@@ -10,6 +10,8 @@
 #      The information used here was obtained free of
 #      charge from and is copyrighted by Retrosheet.  Interested
 #      parties may contact Retrosheet at "www.retrosheet.org".
+#
+# 1/7/19: Added a parameter to allow exclusion of the day before gameday from the lookback period.
 
 # Modules
 import os
@@ -77,9 +79,9 @@ def date_str(date: int):
 def date_range(gamedays, season):
     # Converts 'YYYY' string to an integer start date, YYYY0101 and end date YYYY1231
     def season_to_date(season): 
-        return (int(season)*10000 + 101, int(season)*10000+1231)
+#         return (int(season)*10000 + 101, int(season)*10000+1231)
         # Hack to shorten the season for dev purposes (faster analysis)
-#         return (int(season)*10000 + 101, int(season)*10000+531)
+        return (int(season)*10000 + 101, int(season)*10000+430)
     
     first_of_year, last_of_year = season_to_date(season)
     season_gamedays = gamedays.loc[((gamedays >= first_of_year) &
@@ -101,7 +103,7 @@ def gamedays_offset(gamedays, base_date, n):
 
 
 # Create a DF to hold team stats starting at the beginning of the lookback window.
-def build_netpoints_dfs(games_df, start_date, end_date, lookback_n, gdays):
+def build_netpoints_dfs(games_df, start_date, end_date, lookback_n, gdays, excl_day_before=False):
     start_processing = datetime.datetime.now()
     print(f"  {start_processing}: Starting build of net runs rolling average tables.")
 
@@ -146,10 +148,56 @@ def build_netpoints_dfs(games_df, start_date, end_date, lookback_n, gdays):
 
     # Now populate the visiting team net points rolling averages dataframe
     # Avg = sum of net points divided by # of games
-    v_ra_np_df = v_np_df.rolling(lookback_n).sum() / \
-        v_ng_df.rolling(lookback_n).sum()  # Rolling average of mean net points
-    h_ra_np_df = h_np_df.rolling(lookback_n).sum() / \
-        h_ng_df.rolling(lookback_n).sum()  # Rolling average of mean net points
+    if excl_day_before:
+        
+        
+        print(f"Excluding day before. n={lookback_n}")
+        print("")
+        print("Net Points")
+        print(v_np_df['LAN'].head())
+        print("Net Points - rolling 3")
+        print(v_np_df['LAN'].rolling(3).sum().head())
+        print("Net Points - shifted")
+        print(v_np_df['LAN'].shift(periods=1).head())
+        print("Net Points - shifted - rolling 3")
+        print(v_np_df['LAN'].shift(periods=1).rolling(2).sum().head())
+        
+        print("")
+        print("Num Games")
+        print(v_ng_df['LAN'].head())
+        print("Num Games - rolling 3")
+        print(v_ng_df['LAN'].rolling(3).sum().head())
+        print(v_ng_df['LAN'].shift(periods=1).head())
+        print(v_ng_df['LAN'].shift(periods=1).rolling(2).sum().head())
+        
+        print("")
+        print("rolling average net points (standard)")
+        v_ra_np_df = v_np_df.rolling(3).sum() / \
+            v_ng_df.rolling(3).sum()  # Rolling average of mean net points
+        print(v_ra_np_df['LAN'].head())
+
+        
+        print("")
+        print("rolling average net points excluding day before")
+        v_ra_np_df2 = v_np_df.shift(periods=1).rolling(2).sum() / \
+            v_ng_df.shift(periods=1).rolling(2).sum()  # Rolling average of mean net points
+        print(v_ra_np_df2['ANA'].head())
+        
+        sys.exit()
+        
+        
+
+        v_ra_np_df = v_np_df.shift(periods=1).rolling(lookback_n-1).sum() / \
+            v_ng_df.shift(periods=1).rolling(lookback_n-1).sum()  # Rolling average of mean net points
+
+        h_ra_np_df = h_np_df.shift(periods=1).rolling(lookback_n-1).sum() / \
+            h_ng_df.shift(periods=1).rolling(lookback_n-1).sum()  # Rolling average of mean net points
+    else:
+        v_ra_np_df = v_np_df.rolling(lookback_n).sum() / \
+            v_ng_df.rolling(lookback_n).sum()  # Rolling average of mean net points
+        h_ra_np_df = h_np_df.rolling(lookback_n).sum() / \
+            h_ng_df.rolling(lookback_n).sum()  # Rolling average of mean net points
+    
 
     end_processing = datetime.datetime.now()
     duration = end_processing - start_processing
@@ -171,14 +219,22 @@ def calc_predictions(games_df, v_ra_np_df, h_ra_np_df, start_date, end_date, \
     # results_df['Prediction Correct?'] = ""
     print(f"  Results table of length {len(results_df)}")
 
+    num_ties = 0
+    
     for game in results_df.index:
         game_day = results_df.loc[game,'Date']
         v_team = results_df.loc[game, "Visiting Team"]
         h_team = results_df.loc[game, "Home Team"]
         v_avg_np = v_ra_np_df.loc[game_day, v_team]
         h_avg_np = h_ra_np_df.loc[game_day, v_team]
+        
+        if h_avg_np == v_avg_np:
+            num_ties += 1
+            
         results_df.at[game, 'Predict Home Wins?'] = h_avg_np >= v_avg_np # Tie goes to home because home bats last
 
+    print(f"{num_ties} ties out of {len(results_df)} games.")
+        
     # results_df.loc['Prediction Correct?'] = results_df['Predict Home Wins?'] == results_df['Home Winner']
     results_df['Prediction Correct?'] = results_df['Predict Home Wins?'] == results_df['Home Winner']
 
@@ -201,7 +257,7 @@ def derive_metrics(results_df):
 # Predictor to be called by the harness, passed in the lookback_n and season (year).
 # lookback_n indicates how many prior game days to consider when calculating net
 # points (runs) for prediction purposes.
-def net_points_predictor(lookback_n, season):
+def net_points_predictor(lookback_n, season, excl_day_before=False):
     games_df = read_source_data()
     gamedays = pd.Series(games_df['Date'].unique())  # Series with gamedays.
     start_date, end_date = date_range(gamedays, season)
@@ -211,10 +267,12 @@ def net_points_predictor(lookback_n, season):
 #     print("")
 #     print(f"Starting games_df length: {len(games_df)}")
     (v_ra_np_df, h_ra_np_df) = build_netpoints_dfs(games_df, start_date, end_date, \
-                                                  lookback_n, gamedays)
+                                                  lookback_n, gamedays, excl_day_before)
 #     print(f"Ending games_df length: {len(games_df)}")
     
     results_df = calc_predictions(games_df, v_ra_np_df, h_ra_np_df, start_date, \
                                   end_date, lookback_n, gamedays)
+    
+    print(results_df.tail(10))
     
     return derive_metrics(results_df)
