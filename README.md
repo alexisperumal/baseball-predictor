@@ -18,7 +18,7 @@ Build a predictive model that can predict the winner of an MLB game, before it s
 
 • final-submission folder - Look here for all of our select final files for review. https://github.com/alexisperumal/baseball-predictor/tree/master/final-submission
 
-• baseball-logistic-regression.ipynb - Our final Logistic Regression Notebook. Earlier analysis are further down in the file, as indicated in the headers. https://github.com/alexisperumal/baseball-predictor/tree/master/final-submission
+• baseball-logistic-regression.ipynb - Our final Logistic Regression Notebook. Earlier analysis are further down in the file, as indicated in the headers. https://github.com/alexisperumal/baseball-predictor/blob/master/final-submission/baseball-logistic-regression.ipynb
 
 • 2020-10-11_Baseball_Predictor_Project_Summary.pptx - Team presentation Deck. https://github.com/alexisperumal/baseball-predictor/blob/master/final-submission/2020-10-11_Baseball_Predictor_Project_Summary.pptx
 
